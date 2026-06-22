@@ -1,0 +1,88 @@
+{
+  "name": "BookkeeperFlow - Missing Document Reminder Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "bookkeeperflow/document-request",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "WebhookTrigger",
+      "name": "Webhook: Document Request Created",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.status}}",
+              "operation": "notEqual",
+              "value2": "submitted"
+            }
+          ]
+        }
+      },
+      "id": "MissingDocumentFilter",
+      "name": "Filter: Missing Documents",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "bookkeeping@example.com",
+        "toEmail": "={{$json.clientEmail}}",
+        "subject": "Reminder: missing documents for month-end close",
+        "text": "Hi {{$json.clientName}},\n\nWe are still missing {{$json.documentName}} for {{$json.period}}. Please upload it when you have a chance so we can keep your month-end close moving.\n\nThank you,\nYour bookkeeping team"
+      },
+      "id": "SendReminderEmail",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [560, -100]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/webhooks/n8n",
+        "method": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\"eventType\":\"reminder_sent\",\"clientId\":$json.clientId,\"documentName\":$json.documentName}"
+      },
+      "id": "LogAutomationEvent",
+      "name": "Log Automation Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [820, -100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"ok\":true,\"message\":\"Reminder workflow completed\"}"
+      },
+      "id": "RespondToWebhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1080, -100]
+    }
+  ],
+  "connections": {
+    "Webhook: Document Request Created": {
+      "main": [[{"node": "Filter: Missing Documents", "type": "main", "index": 0}]]
+    },
+    "Filter: Missing Documents": {
+      "main": [[{"node": "Send Reminder Email", "type": "main", "index": 0}], []]
+    },
+    "Send Reminder Email": {
+      "main": [[{"node": "Log Automation Event", "type": "main", "index": 0}]]
+    },
+    "Log Automation Event": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "notes": "Demo export. Replace email credentials, localhost URL, and payload fields before use in a real environment."
+}
